@@ -146,9 +146,29 @@ surrogates, unique = pd.factorize(canada_data['Leading causes of death (ICD-10)'
 
 canada_data['State'] = 'N/A'
 canada_data['Surrogate Keys'] = surrogates
-columns = ['Surrogate Keys'] + ['State'] + [col for col in canada_data.columns if col != 'Surrogate Keys']
+columns = ['Surrogate Keys'] + ['State'] + ['Year'] + ['Country'] + ['Age at time of death'] + ['Sex'] + ['Description'] + ['Code'] + ['Characteristics'] + ['VALUE']
+ 
 canada_data = canada_data[columns]
+death_counts = canada_data[['Code', 'Characteristics', 'VALUE']].copy()
 
+death_counts = pd.pivot_table(death_counts, index =['Code'], columns='Characteristics', values = ['VALUE'])
+
+death_counts.reset_index(drop=False, inplace=True)
+death_counts.reindex(['Code', 'Age-specific mortality rate per 100,000 population', 'Number of deaths', 'Percentage of deaths', 'Rank of ldeading causes of death'], axis=1)
+death_counts.columns = death_counts.columns.droplevel(0)
+death_counts.reset_index(drop=True)
+#print(death_counts[:100])
+
+canada_data = canada_data.drop(columns='Characteristics')
+canada_data = canada_data.drop(columns='VALUE')
+canada_data = canada_data.drop_duplicates()
+canada_data.reset_index(drop=False, inplace=True)
+canada_data = canada_data.drop(columns='index')
+
+canada_data['Age-specific mortality rate per 100,000 population'] = death_counts['Age-specific mortality rate per 100,000 population']
+canada_data['Number of deaths'] = death_counts['Number of deaths']
+canada_data['Percentage of deaths'] = death_counts['Percentage of deaths']
+canada_data['Rank of leading causes of death'] = death_counts['Rank of leading causes of death']
 print(canada_data[:10])
 
 #----------------------------------------
@@ -156,7 +176,8 @@ print(canada_data[:10])
 US_data['Country'] = 'United States'
 US_data['Sex'] = 'Both sexes'
 US_data['Age at time of death'] = 'Age at time of death, all ages'
+US_data['State'] = US_data['State'].replace('United States', 'N/A')
 
-
+print(US_data[10:15])
 
 
