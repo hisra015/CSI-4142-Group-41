@@ -49,13 +49,12 @@ conn.commit()
 sql = """ 
 CREATE TABLE IF NOT EXISTS cause_of_death_dimension (  
     death_key SERIAL PRIMARY KEY, 
-    death_desription TEXT,
+    death_description TEXT,
     mortality_id TEXT
 );
 """ 
 cursor.execute(sql)
 conn.commit()
-
 
 #create cause table if it doesn't exist
 #table to hold ids ofr ICD-10 causes of death
@@ -98,6 +97,8 @@ cause_data = pd.read_csv("cause ids.csv")
 canada_data = canada_data.rename({'REF_DATE':'Year'}, axis='columns') 
 canada_data = canada_data.rename({'GEO':'Country'}, axis='columns') 
 
+#--------------------Transform Canadian dataset--------------------
+
 #Columns to remove in Canada Data.csv
 
 dguid = 'DGUID'
@@ -134,13 +135,28 @@ if dec in canada_data.columns:
     canada_data = canada_data.drop(columns=dec)
 
 
+#stuff = canada_data['Leading causes of death (ICD-10)'].str.split('[').astype('string')
+#print(stuff[:10])
+
+#split descriptions and codes
+canada_data[['Description', 'Code']] = canada_data['Leading causes of death (ICD-10)'].str.extract(r'(.*) (\[.*\])', expand=True)
+canada_data['Country'] = 'Canada'
+
 surrogates, unique = pd.factorize(canada_data['Leading causes of death (ICD-10)'])
 
+canada_data['State'] = 'N/A'
 canada_data['Surrogate Keys'] = surrogates
-columns = ['Surrogate Keys'] + [col for col in canada_data.columns if col != 'Surrogate Keys']
+columns = ['Surrogate Keys'] + ['State'] + [col for col in canada_data.columns if col != 'Surrogate Keys']
 canada_data = canada_data[columns]
 
 print(canada_data[:10])
 
-#cause_data loaded into c
+#----------------------------------------
+
+US_data['Country'] = 'United States'
+US_data['Sex'] = 'Both sexes'
+US_data['Age at time of death'] = 'Age at time of death, all ages'
+
+
+
 
