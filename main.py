@@ -50,18 +50,7 @@ sql = """
 CREATE TABLE IF NOT EXISTS cause_of_death_dimension (  
     death_key SERIAL PRIMARY KEY, 
     death_description TEXT,
-    mortality_id TEXT
-);
-""" 
-cursor.execute(sql)
-conn.commit()
-
-#create cause table if it doesn't exist
-#table to hold ids ofr ICD-10 causes of death
-sql = """ 
-CREATE TABLE IF NOT EXISTS code_table (  
-    code_key SERIAL PRIMARY KEY, 
-    description TEXT
+    mortality_code TEXT
 );
 """ 
 cursor.execute(sql)
@@ -112,28 +101,17 @@ symbol = 'SYMBOL'
 terminate = 'TERMINATED'
 dec = 'DECIMALS'
 
-#drop all uncessory columns
-if dguid in canada_data.columns:
-    canada_data = canada_data.drop(columns=dguid)
-if uomid in canada_data.columns:
-    canada_data = canada_data.drop(columns=uomid)
-if scalar_f in canada_data.columns:
-    canada_data = canada_data.drop(columns=scalar_f)
-if scalar_ID in canada_data.columns:
-    canada_data = canada_data.drop(columns=scalar_ID)
-if vector in canada_data.columns:
-    canada_data = canada_data.drop(columns=vector)
-if coord in canada_data.columns:
-    canada_data = canada_data.drop(columns=coord)
-if status in canada_data.columns:
-    canada_data = canada_data.drop(columns=status)
-if symbol in canada_data.columns:
-    canada_data = canada_data.drop(columns=symbol)
-if terminate in canada_data.columns:
-    canada_data = canada_data.drop(columns=terminate)
-if dec in canada_data.columns:
-    canada_data = canada_data.drop(columns=dec)
-
+#drop all uneccessary columns
+canada_data = canada_data.drop(columns='DGUID')
+canada_data = canada_data.drop(columns='UOM_ID')
+canada_data = canada_data.drop(columns='SCALAR_FACTOR')
+canada_data = canada_data.drop(columns='SCALAR_ID')
+canada_data = canada_data.drop(columns='VECTOR')
+canada_data = canada_data.drop(columns='COORDINATE')
+canada_data = canada_data.drop(columns='STATUS')
+canada_data = canada_data.drop(columns='SYMBOL')
+canada_data = canada_data.drop(columns='TERMINATED')
+canada_data = canada_data.drop(columns='DECIMALS')
 
 #stuff = canada_data['Leading causes of death (ICD-10)'].str.split('[').astype('string')
 #print(stuff[:10])
@@ -142,15 +120,16 @@ if dec in canada_data.columns:
 canada_data[['Description', 'Code']] = canada_data['Leading causes of death (ICD-10)'].str.extract(r'(.*) (\[.*\])', expand=True)
 canada_data['Country'] = 'Canada'
 
-surrogates, unique = pd.factorize(canada_data['Leading causes of death (ICD-10)'])
+
 
 canada_data['State'] = 'N/A'
-canada_data['Surrogate Keys'] = surrogates
-columns = ['Surrogate Keys'] + ['State'] + ['Year'] + ['Country'] + ['Age at time of death'] + ['Sex'] + ['Description'] + ['Code'] + ['Characteristics'] + ['VALUE']
+
+columns = ['Year'] + ['Country'] + ['State'] + ['Age at time of death'] + ['Sex'] + ['Description'] + ['Code'] + ['Characteristics'] + ['VALUE']
  
 canada_data = canada_data[columns]
-death_counts = canada_data[['Code', 'Characteristics', 'VALUE']].copy()
 
+#Turn death statistics into columns instead of havingh their own rows
+death_counts = canada_data[['Code', 'Characteristics', 'VALUE']].copy()
 death_counts = pd.pivot_table(death_counts, index =['Code'], columns='Characteristics', values = ['VALUE'])
 
 death_counts.reset_index(drop=False, inplace=True)
@@ -159,12 +138,14 @@ death_counts.columns = death_counts.columns.droplevel(0)
 death_counts.reset_index(drop=True)
 #print(death_counts[:100])
 
+#prepare canada data for new columns
 canada_data = canada_data.drop(columns='Characteristics')
 canada_data = canada_data.drop(columns='VALUE')
 canada_data = canada_data.drop_duplicates()
 canada_data.reset_index(drop=False, inplace=True)
 canada_data = canada_data.drop(columns='index')
 
+#Re-add the death statistics
 canada_data['Age-specific mortality rate per 100,000 population'] = death_counts['Age-specific mortality rate per 100,000 population']
 canada_data['Number of deaths'] = death_counts['Number of deaths']
 canada_data['Percentage of deaths'] = death_counts['Percentage of deaths']
@@ -178,6 +159,40 @@ US_data['Sex'] = 'Both sexes'
 US_data['Age at time of death'] = 'Age at time of death, all ages'
 US_data['State'] = US_data['State'].replace('United States', 'N/A')
 
-print(US_data[10:15])
+#replace square brackets around codes to stay consistent with canadian data
+US_data['113 Cause Name'] = US_data['113 Cause Name'].str.replace(r'(\([A-Z]+\d+-[A-Z]+\d+,[A-Z]+\d+-[A-Z]+\d+\))', lambda x: x.group().replace('(', '[').replace(')', ']'), regex=True)
+#drop all uneccessary columns
+US_data = US_data.drop(columns='Cause Name')
+US_data = US_data.rename({'113 Cause Name':'Leading causes of death (ICD-10)'}, axis='columns') 
+US_data = US_data.rename({'Age-adjusted Death Rate':'Age-specific mortality rate per 100,000 population'}, axis='columns') 
+US_data = US_data.rename({'Deaths':'Number of deaths'}, axis='columns') 
+
+#change names to make data consistent
+US_data.replace('All Causes', 'Total, all causes of death [A00-Y89]', inplace=True)
+#split descriptions and codes
+US_data[['Description', 'Code']] = US_data['Leading causes of death (ICD-10)'].str.extract(r'(.*) (\[.*\])', expand=True)
+
+#Calculate percentage of deaths and ranks of deaths to keep it consistent with Canadian data
+US_data['Percentage of deaths'] = US_data.groupby('State')['Number of deaths'].transform(lambda x: x / x.sum() * 100)
+# Rank the causes of death within each state based on the number of deaths
+US_data['Rank of leading causes of death'] = US_data.groupby('State')['Number of deaths'].rank(ascending=False, method='min')
 
 
+#reorder columns
+columns = ['Year'] + ['Country'] + ['State'] + ['Age at time of death'] + ['Sex'] + ['Description'] + ['Code'] + ['Age-specific mortality rate per 100,000 population'] + ['Number of deaths'] + ['Percentage of deaths'] + ['Rank of leading causes of death']
+US_data = US_data[columns]
+
+print(US_data[:10])
+
+#combine both data frames to stage data
+staged_data = pd.concat([canada_data, US_data], ignore_index=True)
+
+#assign surrogate keys to data
+staged_data['Surrogate Key'] = range(1, len(staged_data) + 1)
+
+#reorder columns
+columns = ['Surrogate Key'] + ['Year'] + ['Country'] + ['State'] + ['Age at time of death'] + ['Sex'] + ['Description'] + ['Code'] + ['Age-specific mortality rate per 100,000 population'] + ['Number of deaths'] + ['Percentage of deaths'] + ['Rank of leading causes of death']
+staged_data = staged_data[columns]
+print(staged_data[:10])
+
+staged_data.to_csv('Staged_data.csv')
