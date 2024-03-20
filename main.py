@@ -157,29 +157,35 @@ US_data['Sex'] = 'Both sexes'
 US_data['Age'] = 'Age at time of death, all ages'
 US_data['State'] = US_data['State'].replace('United States', 'N/A')
 
-#replace square brackets around codes to stay consistent with canadian data
-US_data['113 Cause Name'] = US_data['113 Cause Name'].str.replace(r'(\([A-Z]+\d+-[A-Z]+\d+,[A-Z]+\d+-[A-Z]+\d+\))', lambda x: x.group().replace('(', '[').replace(')', ']'), regex=True)
-#drop all uneccessary columns
+#drop all uneccessary columns 
 US_data = US_data.drop(columns='Cause Name')
+
+#rename columns
 US_data = US_data.rename({'113 Cause Name':'Leading causes of death (ICD-10)'}, axis='columns') 
 US_data = US_data.rename({'Age-adjusted Death Rate':'Age-specific mortality rate per 100,000 population'}, axis='columns') 
 US_data = US_data.rename({'Deaths':'Number of deaths'}, axis='columns') 
 
 #change names to make data consistent
-US_data.replace('All Causes', 'Total, all causes of death [A00-Y89]', inplace=True)
+US_data.replace('All Causes', 'Total, all causes of death (A00-Y89)', inplace=True)
 #split descriptions and codes
-US_data[['Description', 'Code']] = US_data['Leading causes of death (ICD-10)'].str.extract(r'(.*) (\[.*\])', expand=True)
+pattern = r'([^\(]*)\s*(\([^\)]+\))'
+US_data[['Description', 'Code']] = US_data['Leading causes of death (ICD-10)'].str.extract(pattern, expand=True)
 
 #Calculate percentage of deaths and ranks of deaths to keep it consistent with Canadian data
 US_data['Percentage of deaths'] = US_data.groupby('State')['Number of deaths'].transform(lambda x: (x / x.sum() * 100).round(1))
 # Rank the causes of death within each state based on the number of deaths
 US_data['Rank of leading causes of death'] = US_data.groupby('State')['Number of deaths'].rank(ascending=False, method='min')
 
+#fix edge case data
+US_data.replace('Accidents', 'Accidents (unintentional injuries)', inplace=True)
+US_data.replace('Intentional self-harm ', 'Intentional self-harm (suicide)', inplace=True)
+US_data.replace('(unintentional injuries)', '(V01-X59, Y85-Y86)', inplace=True)
+US_data.replace('(suicide)', '(X60-X84, Y87.0)', inplace=True)
+US_data['Leading causes of death (ICD-10)'] = US_data['Leading causes of death (ICD-10)'].str.replace(r'(\([A-Z]+\d+-[A-Z]+\d+,[A-Z]+\d+-[A-Z]+\d+\))', lambda x: x.group().replace('(', '[').replace(')', ']'), regex=True)
+
 #reorder columns
 columns = ['Year'] + ['Country'] + ['State'] + ['Age'] + ['Sex'] + ['Description'] + ['Code'] + ['Age-specific mortality rate per 100,000 population'] + ['Number of deaths'] + ['Percentage of deaths'] + ['Rank of leading causes of death']
-US_data = US_data[columns]
-
-#print(US_data[:10])
+US_data = US_data[columns] 
 
 #combine both data frames to stage data
 staged_data = pd.concat([canada_data, US_data])
