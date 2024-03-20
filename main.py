@@ -81,8 +81,8 @@ conn.commit()
 #load each csv file into a dataframe
 canada_data = pd.read_csv("Canada Data.csv", low_memory=False)
 US_data = pd.read_csv("US Data.csv")
-cause_data = pd.read_csv("cause ids.csv")
 
+#rename columns in canada dataset
 canada_data = canada_data.rename({'REF_DATE':'Year'}, axis='columns') 
 canada_data = canada_data.rename({'GEO':'Country'}, axis='columns')
 canada_data = canada_data.rename({'Age at time of death':'Age'}, axis='columns')  
@@ -181,7 +181,10 @@ US_data.replace('Accidents', 'Accidents (unintentional injuries)', inplace=True)
 US_data.replace('Intentional self-harm ', 'Intentional self-harm (suicide)', inplace=True)
 US_data.replace('(unintentional injuries)', '(V01-X59, Y85-Y86)', inplace=True)
 US_data.replace('(suicide)', '(X60-X84, Y87.0)', inplace=True)
-US_data['Leading causes of death (ICD-10)'] = US_data['Leading causes of death (ICD-10)'].str.replace(r'(\([A-Z]+\d+-[A-Z]+\d+,[A-Z]+\d+-[A-Z]+\d+\))', lambda x: x.group().replace('(', '[').replace(')', ']'), regex=True)
+
+#reformat data
+US_data['Code'] = US_data['Code'].str.replace('(','[', regex=False)
+US_data['Code'] = US_data['Code'].str.replace(')',']', regex=False)
 
 #reorder columns
 columns = ['Year'] + ['Country'] + ['State'] + ['Age'] + ['Sex'] + ['Description'] + ['Code'] + ['Age-specific mortality rate per 100,000 population'] + ['Number of deaths'] + ['Percentage of deaths'] + ['Rank of leading causes of death']
