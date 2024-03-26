@@ -201,4 +201,18 @@ columns = ['Surrogate Key'] + ['Year'] + ['Country'] + ['State'] + ['Age'] + ['S
 staged_data = staged_data[columns]
 print(staged_data[:10])
 
+#rename columns to match database
+staged_data = staged_data.rename({'Surrogate Key':'surrogate'}, axis='columns') 
+staged_data = staged_data.rename({'Year':'year'}, axis='columns') 
+staged_data = staged_data.rename({'Country':'country'}, axis='columns') 
+staged_data = staged_data.rename({'State':'state'}, axis='columns')
+staged_data = staged_data.rename({'Age':'age_range'}, axis='columns')
+staged_data = staged_data.rename({'Sex':'sex'}, axis='columns')
+staged_data = staged_data.rename({'Description':'death_description'}, axis='columns')
+staged_data = staged_data.rename({'Code':'mortality_code'}, axis='columns')
+staged_data = staged_data.rename({'Age-specific mortality rate per 100,000 population':'age_mortality'}, axis='columns')
+staged_data = staged_data.rename({'Number of deaths':'death_number'}, axis='columns')
+staged_data = staged_data.rename({'Percentage of deaths':'death_percentage'}, axis='columns')
+staged_data = staged_data.rename({'Rank of leading causes of death':'death_rank'}, axis='columns')
+
 staged_data.to_csv('Staged_data.csv')
