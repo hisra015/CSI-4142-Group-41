@@ -121,7 +121,7 @@ canada_data = canada_data.drop(columns='DECIMALS')
 canada_data['Leading causes of death (ICD-10)'] = canada_data['Leading causes of death (ICD-10)'].replace('Other causes of death', 'Other causes of death [Other]')
 canada_data[['Description', 'Code']] = canada_data['Leading causes of death (ICD-10)'].str.extract(r'(.*) (\[.*\])', expand=True)
 canada_data['Country'] = 'Canada'
-canada_data['State'] = 'N/A'
+canada_data['State'] = 'NA'
 
 columns = ['Year'] + ['Country'] + ['State'] + ['Age'] + ['Sex'] + ['Description'] + ['Code'] + ['Characteristics'] + ['VALUE']
 canada_data = canada_data[columns]
@@ -155,7 +155,7 @@ canada_data['Rank of leading causes of death'] = death_counts['Rank of leading c
 US_data['Country'] = 'United States'
 US_data['Sex'] = 'Both sexes'
 US_data['Age'] = 'Age at time of death, all ages'
-US_data['State'] = US_data['State'].replace('United States', 'N/A')
+US_data['State'] = US_data['State'].replace('United States', 'NA')
 
 #drop all uneccessary columns 
 US_data = US_data.drop(columns='Cause Name')
@@ -199,7 +199,8 @@ staged_data['Surrogate Key'] = range(1, len(staged_data) + 1)
 #reorder columns
 columns = ['Surrogate Key'] + ['Year'] + ['Country'] + ['State'] + ['Age'] + ['Sex'] + ['Description'] + ['Code'] + ['Age-specific mortality rate per 100,000 population'] + ['Number of deaths'] + ['Percentage of deaths'] + ['Rank of leading causes of death']
 staged_data = staged_data[columns]
-print(staged_data[:10])
+#print(staged_data[:10])
+
 
 #rename columns to match database
 staged_data = staged_data.rename({'Surrogate Key':'surrogate'}, axis='columns') 
@@ -215,4 +216,7 @@ staged_data = staged_data.rename({'Number of deaths':'death_number'}, axis='colu
 staged_data = staged_data.rename({'Percentage of deaths':'death_percentage'}, axis='columns')
 staged_data = staged_data.rename({'Rank of leading causes of death':'death_rank'}, axis='columns')
 
+#fill empty columns, missing values
+staged_data[['age_mortality', 'death_number', 'death_percentage', 'death_rank']] = staged_data[['age_mortality', 'death_number', 'death_percentage', 'death_rank']].fillna(-1)
+print(staged_data[:10])
 staged_data.to_csv('Staged_data.csv')
