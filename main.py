@@ -5,6 +5,7 @@
 
 import psycopg2
 import pandas as pd
+import numpy as np
 
 #connect to database remotely
 conn = psycopg2.connect(dbname='railway', user='postgres', password='EYndBSqLdilpjZfzdWFAOiNTdRrozMko', host='viaduct.proxy.rlwy.net', port='41102', sslmode='require')
@@ -218,5 +219,7 @@ staged_data = staged_data.rename({'Rank of leading causes of death':'death_rank'
 
 #fill empty columns, missing values
 staged_data[['age_mortality', 'death_number', 'death_percentage', 'death_rank']] = staged_data[['age_mortality', 'death_number', 'death_percentage', 'death_rank']].fillna(-1)
+staged_data.replace('', np.nan, inplace=True)
+staged_data.fillna('N/A', inplace=True)
 print(staged_data[:10])
-staged_data.to_csv('Staged_data.csv')
+staged_data.to_csv('Staged_data.csv', index=False)
