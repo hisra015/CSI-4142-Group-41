@@ -24,8 +24,16 @@ Run instructions:
 		'pip install psycopg2'
 		'pip install sqlalchemy'
 
+- Open a terminal in the working directory
+- Use '-py main.py' to run main
+- Use '-py load.py' to run load.py
+
+- Note: Running load will duplicate the database values.
+
+
 The database is a postgres database hosted remotely on Railway. To view please use the invite link:
 https://railway.app/invite/sb56zXbcSYw
+Your email should already be invited.
 
 If there are any issues, please contact me at mquac089@uottawa.ca 
 
