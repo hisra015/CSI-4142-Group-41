@@ -10,19 +10,36 @@ import pandas as pd
 conn = psycopg2.connect(dbname='railway', user='postgres', password='EYndBSqLdilpjZfzdWFAOiNTdRrozMko', host='viaduct.proxy.rlwy.net', port='41102', sslmode='require')
 cursor = conn.cursor()
 
-# Function to execute and print results of a query
+#function to execute and print results of a query
 def execute_and_print_query(cursor, query):
     cursor.execute(query)
     rows = cursor.fetchall()
     for row in rows:
         print(row)
 
+# Check if 'staged_data' table exists, create if not
+cursor.execute("SELECT to_regclass('public.staged_data')")
+if cursor.fetchone()[0] is None:
+    cursor.execute("""
+        CREATE TABLE staged_data (
+            ref_date INT,
+            characteristics VARCHAR(255),
+            value INT,
+            "leading causes of death (ICD-10)" VARCHAR(255)
+            -- Add other necessary columns as per your CSV file or requirements
+        );
+    """)
+    conn.commit()
+    print("Table 'staged_data' created.")
+else:
+    print("Table 'staged_data' exists.")
+
 #iceberg query: find the five years with highest total number of deaths
 iceberg_query = """
-SELECT "REF_DATE", SUM("VALUE") AS total_deaths
+SELECT ref_date, SUM(value) AS total_deaths
 FROM staged_data
-WHERE "Characteristics" = 'Number of deaths'
-GROUP BY "REF_DATE"
+WHERE characteristics = 'Number of deaths'
+GROUP BY ref_date
 ORDER BY total_deaths DESC
 LIMIT 5;
 """
@@ -30,27 +47,27 @@ execute_and_print_query(cursor, iceberg_query)
 
 #windowing query: rank leading causes of death by number of deaths for the most recent year
 windowing_query = """
-SELECT "REF_DATE", "Leading causes of death (ICD-10)", "VALUE",
-RANK() OVER (PARTITION BY "REF_DATE" ORDER BY "VALUE" DESC) AS rank
+SELECT ref_date, "Leading causes of death (ICD-10)", value,
+RANK() OVER (PARTITION BY ref_date ORDER BY value DESC) AS rank
 FROM staged_data
-WHERE "Characteristics" = 'Number of deaths' AND "REF_DATE" = (SELECT MAX("REF_DATE") FROM staged_data)
-ORDER BY "REF_DATE", rank;
+WHERE characteristics = 'Number of deaths' AND ref_date = (SELECT MAX(ref_date) FROM staged_data)
+ORDER BY ref_date, rank;
 """
 execute_and_print_query(cursor, windowing_query)
 
 #window clause: compare number of deaths in a year to previous and next years
 window_clause_query = """
-SELECT "REF_DATE",
-"VALUE" AS deaths,
-LAG("VALUE", 1) OVER (ORDER BY "REF_DATE") AS previous_year_deaths,
-LEAD("VALUE", 1) OVER (ORDER BY "REF_DATE") AS next_year_deaths
+SELECT ref_date,
+value AS deaths,
+LAG(value, 1) OVER (ORDER BY ref_date) AS previous_year_deaths,
+LEAD(value, 1) OVER (ORDER BY ref_date) AS next_year_deaths
 FROM (
-  SELECT "REF_DATE", SUM("VALUE") AS "VALUE"
+  SELECT ref_date, SUM(value) AS value
   FROM staged_data
-  WHERE "Characteristics" = 'Number of deaths'
-  GROUP BY "REF_DATE"
+  WHERE characteristics = 'Number of deaths'
+  GROUP BY ref_date
 ) AS yearly_deaths
-ORDER BY "REF_DATE";
+ORDER BY ref_date;
 """
 execute_and_print_query(cursor, window_clause_query)
 
