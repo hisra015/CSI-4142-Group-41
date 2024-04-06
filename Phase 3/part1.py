@@ -14,107 +14,187 @@ cursor = conn.cursor()
 #PART A
 #------------------------------------------------------------------
 #Drill Down (From Country to State) Query
+#Description: Drill Down on Deaths by State within a Country over a Specific Year Range
 sql = """ 
-SELECT year, country, state, COUNT(*) as death_count
-FROM staged_data
-WHERE country = 'Canada'
-GROUP BY year, country, state
-ORDER BY year, state;
+SELECT y.year, g.country, g.state, COUNT(f.death_number) as death_count
+FROM fact_table f
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+WHERE y.year BETWEEN 2019 AND 2021 AND g.country = 'Canada'
+GROUP BY y.year, g.country, g.state
+ORDER BY y.year, g.country, g.state;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nDrill Down (From Country to State) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 
 #Roll Up (From State to Country) Query
+#Description: Roll Up to Show Total Deaths by Country over Years
 sql = """ 
-SELECT year, country, SUM(death_number) as total_deaths
-FROM staged_data
-GROUP BY year, country
-ORDER BY year, country;
+SELECT y.year, g.country, SUM(f.death_number) as total_deaths
+FROM fact_table f
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+GROUP BY y.year, g.country
+ORDER BY y.year, g.country;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nRoll Up (From State to Country) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 #------------------------------------------------------------------
 
 #PART B
 #------------------------------------------------------------------
 #Slice (Selecting one year) Query
+#Description: Slice to Show Deaths for the Year 2020 across All Countries
 sql = """ 
-SELECT *
-FROM staged_data
-WHERE year = 2020;
+SELECT y.year, g.country, g.state, d.age_range, c.death_description, f.death_number
+FROM fact_table f
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+JOIN demographic_dimension d ON f.demographic_key = d.demographic_key
+JOIN cause_of_death_dimension c ON f.cause_key = c.death_key
+WHERE y.year = 2020;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nSlice (Selecting one year) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 #------------------------------------------------------------------
 
 #PART C
 #------------------------------------------------------------------
 #Dice (Sub-cube by Year and Country for two specific causes) Query
+#Description: Dice to Analyze Deaths by Cause in Canada and United States for a Range of Years
 sql = """ 
-SELECT year, country, mortality_code, SUM(death_number) as total_deaths
-FROM staged_data
-WHERE year BETWEEN 2019 AND 2021 AND country IN ('Canada', 'United States') AND mortality_code IN ('A37', 'X85-Y09')
-GROUP BY year, country, mortality_code;
+SELECT y.year, g.country, d.age_range, SUM(f.death_number) as total_deaths
+FROM fact_table f
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+JOIN demographic_dimension d ON f.demographic_key = d.demographic_key
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+GROUP BY y.year, g.country, d.age_range
+ORDER BY y.year, g.country, d.age_range;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nDice (Sub-cube by Year and Country for two specific causes) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 
-#Dice (Sub-cube for a specific Age Range across all years) Query
+#Dice (Sub-cube across all Age Range across all years) Query
+#Description: Dice to Analyze Deaths for all Age Ranges Across Countries in a Year
 sql = """ 
-SELECT year, age_range, SUM(death_percentage) as total_death_percentage
-FROM staged_data
-WHERE age_range = '65-74'
-GROUP BY year, age_range
-ORDER BY year;
+SELECT y.year, g.country, d.age_range, SUM(f.death_number) as total_deaths
+FROM fact_table f
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+JOIN demographic_dimension d ON f.demographic_key = d.demographic_key
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+GROUP BY y.year, g.country, d.age_range
+ORDER BY y.year, g.country, d.age_range;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nDice (Sub-cube for a specific Age Range across all years) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 #------------------------------------------------------------------
 
 #PART D
 #------------------------------------------------------------------
 #Drill Down within a Slice (Year and Country) Query
 sql = """ 
-SELECT year, country, state, death_description, SUM(death_number) as total_deaths
-FROM staged_data
-WHERE year = 2020 AND country = 'Canada'
-GROUP BY year, country, state, death_description
-ORDER BY state, death_description;
+SELECT y.year, g.country, g.state, c.death_description, SUM(f.death_number) as total_deaths
+FROM fact_table f
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+JOIN cause_of_death_dimension c ON f.cause_key = c.death_key
+WHERE y.year = 2020 AND g.country = 'Canada'
+GROUP BY y.year, g.country, g.state, c.death_description
+ORDER BY g.state, c.death_description;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nDrill Down within a Slice (Year and Country) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 
 #Dice and Roll Up (Specific cause of death across countries) Query
 sql = """ 
-SELECT year, SUM(death_number) as total_deaths
-FROM staged_data
-WHERE country = 'Canada' AND mortality_code = 'A37'
-GROUP BY year
-ORDER BY year;
+SELECT y.year, g.country, SUM(f.death_number) as total_deaths
+FROM fact_table f
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+GROUP BY y.year, g.country
+ORDER BY y.year, g.country;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nDice and Roll Up (Specific cause of death across countries) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 
 #Slice and Dice (Specific demographics across countries) Query
 sql = """ 
-SELECT year, country, sex, age_range, SUM(death_number) as total_deaths
-FROM staged_data
-WHERE sex = 'Both' AND age_range IN ('0-14', '15-24')
-GROUP BY year, country, sex, age_range
-ORDER BY year, country;
+SELECT y.year, g.country, d.sex, SUM(f.death_number) as total_deaths
+FROM fact_table f
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+JOIN demographic_dimension d ON f.demographic_key = d.demographic_key
+GROUP BY y.year, g.country, d.sex
+ORDER BY y.year, g.country, d.sex;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nSlice and Dice (Specific demographics across countries) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 
 #Drill Down and Dice (States and Causes in a Year) Query
 sql = """ 
-SELECT year, state, mortality_code, SUM(death_number) as total_deaths
-FROM staged_data
-WHERE year = 2021 AND country = 'United States'
-GROUP BY year, state, mortality_code
-ORDER BY state, mortality_code;
+SELECT y.year, g.state, SUM(f.death_number) as total_deaths
+FROM fact_table f
+JOIN year_dimension y ON f.year_key = y.surrogate_pk
+JOIN geography_dimension g ON f.geographic_key = g.geography_key
+WHERE y.year BETWEEN 2019 AND 2021
+GROUP BY y.year, g.state
+ORDER BY y.year, g.state;
 """ 
 cursor.execute(sql)
-conn.commit()
+rows = cursor.fetchall()
+print("\nDrill Down and Dice (States and Causes in a Year) Query")
+if(rows):
+    for i in range(3):
+        print(rows[i])
+else:
+    print("No Data :(")
 #------------------------------------------------------------------
 
