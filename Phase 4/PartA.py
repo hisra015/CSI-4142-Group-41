@@ -9,7 +9,8 @@ from sklearn.preprocessing import MinMaxScaler
 
 #retrieve data from csv
 data = pd.read_csv("Staged_data.csv", low_memory=False)
-
+num_columns = ['year','age_mortality', 'death_number', 'death_percentage', 'death_rank']
+cat_columns = ['country','state', 'age_range', 'death_description', 'mortality_code']
 
 
 # function tonormalize numerical data
@@ -19,9 +20,20 @@ def normalize_data():
     data[columns] = normlizer.fit_transform(data[columns])
     print(data[:10])    
 
+#function to one hot encode categorical data
+def encode_data():
+    return
+
+def feature_selection():
+    
+    mat = data[num_columns].corr()
+    print(mat)
+    return
+
 
 def main():
-   normalize_data()
+   feature_selection()
+   #normalize_data()
 
     
 if __name__ == "__main__":
