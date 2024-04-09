@@ -45,7 +45,18 @@ def feature_selection(data):
     return selected_data
 
 def main():
-   #retrieve data from csv
+    #insert data summarization code below
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    #retrieve data from csv
     data = pd.read_csv("Staged_data.csv", low_memory=False)
     data = data.drop(columns='surrogate') #drop surrogate keys as they are uncessary
     
